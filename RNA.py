@@ -9,7 +9,7 @@ import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 
-
+#here you should put the RNA SEQUENCE
 RNA="UAGCAGCGGGAACAGUUCUGCAG"
 
 
@@ -143,12 +143,9 @@ for i in model_solution:
         solution.append(list(map(int,Strin)))
             
 
-# questa parte qui ancora deve finire, anche se a occhio ho controllato e funziona ci sono ancora dei problemi che devo correggere 
 #Questa parte finale serve per disegnare il grafico del RNA
 
 
-#for i in solution:
-#    print(i,RNA[i[0]],RNA[i[1]],RNA[i[2]],RNA[i[3]])
 
 #Graficare il problema 
 from collections import Counter
