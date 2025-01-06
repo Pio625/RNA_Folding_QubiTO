@@ -9,14 +9,18 @@ import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 
+#I have used for the project Qubovert and networkx for graph some problem
+#for this project i have used a simulated annealer but is very easy to make it with the real one (the solving part use the D-wave "formalism")
+
+
 #here you should put the RNA SEQUENCE
-RNA="UAGCAGCGGGAACAGUUCUGCAG"
+RNA="UCUCCGAUCUUCGGUGUCGAGU"
 
 
-#INIZIAMO A FARE IL PRE-PROCESSING PER LA CREAZIONE DELLE VARIABILI DA OTTIMIZZARE
-#USIAMO COME VARIABILE DI BASE LE QUARTETTE E TOGLIAMO SUBITO LE COMBINAZIONI CHE NON POSSONO ESISTERE POICHÉ NON SI POSSONO LEGARE
+#Pre-processing
+#We start creating the quartet that can be physically connected.
+# Experimentaly we see that other than the complementary quartete there are also GU\UG couple that are very common 
 
-#Faccio il  controllo mettendo dentro al x solo le coppie che hanno complementari
 
 x={}
 
@@ -37,8 +41,9 @@ for i in range(len(RNA)):
                 else:
                     Possible_x.append([i,j,i+1,j-1]) 
                          
-# da qui abbiamo i nostri bei quartetti filtrati
+#Here we have our filter quartet
 
+#We put the filtret quartet in the format that Qubovert want
 for i in range(len(Possible_x)):
     a=str(Possible_x[i][0])+"_"+str(Possible_x[i][1])+"_"+str(Possible_x[i][2]) +"_"+ str(Possible_x[i][3])
     x.update( {i:boolean_var('x(%s)' %  a)  } )
@@ -49,11 +54,14 @@ print(len(x))
 
 
 
-#Dobbiamo iniziare a formare la cost function
+#Our quartet now is formed and set in the qubovert version
 
 
-#Trovo i valori di e_
-
+#The first part of our quartet is the quartet enerty part (infact every quartet contribute different energetically)
+#So the first part of our const function is the quartet multiplied by e_i
+#How you can see the direction of the quartet does mattet, infact 
+#for example logically we could think thath AUUG is the same AUGU but this is not the case
+#Infact the order in where the pairs come can change the energy of the structure
 
 e={"AUAU":0.9, "AUCG":2.1, "AUGC":2.4, "AUUA":1.1, "AUGU":0.6,"AUUG":1.4,
    "CGAU":2.1, "CGCG":3.3, "CGGC":2.4, "CGUA":2.1, "CGGU":1.4,"CGUG":2.1,
@@ -63,21 +71,20 @@ e={"AUAU":0.9, "AUCG":2.1, "AUGC":2.4, "AUUA":1.1, "AUGU":0.6,"AUUG":1.4,
     "UGAU":1, "UGCG":1.5, "UGGC":1.4, "UGUA":0.6, "UGGU":-0.3,"UGUG":0.5 }
  
 
-#primo termine ovvero quello sulle quartette
+#We start to create the obj function, infact we usa a for loop for the summatin of all the quartet
 
 for i in range(len(Possible_x)):
     e_i=e[RNA[Possible_x[i][0]] + RNA[Possible_x[i][1]]+RNA[Possible_x[i][2]]+RNA[Possible_x[i][3]]]
     model = model +e_i*x[i]
 
-#Ora passiamo invece alla creazione del secondo termine della obj function
-
+#Now we start with the creation of the second and third part of our obj function
 
 r=-1.1
 p=-3
 t=2
 
-#il quartetto che viene dopo è nella forma i+n,j-n,i+n+1,j-n-1
-#vado anche a disincentivare la formazioni di quartette con finale AU e GU
+#Stacked quartet are in the form (i+n,j-n,i+n+1,j-n-1) and are very more stable than the single 
+#in the obj function i try to discourage the formation of GU and UA end pairs
 
 
 for i in range(len(Possible_x)):
@@ -93,7 +100,7 @@ for i in range(len(Possible_x)):
 #    if RNA[Possible_x[i][2]]+RNA[Possible_x[i][3]]=="AU":
 #        print(RNA[Possible_x[i][0]],RNA[Possible_x[i][1]],RNA[Possible_x[i][2]],RNA[Possible_x[i][3]],i)
 
-#Cerco di andare a formare dei crossing nodes
+#here we see if there are crossed quartet
 
 def is_crossing_quartet(q1, q2):
     # Unpack the quartets
@@ -122,12 +129,17 @@ for i in range(len(Possible_x)):
     
 
 
-#modello QUBO finito, ora si deve passare alla parte cicciotta, ovvero runnare su d-wave (Qui lo faccio col simulatore per vedere se dafunzia)
+#Here we have build all the qubo model, now we have the part where we start to
+#see the Hardware part of the system
+
+#Vi convert in a Qubo mode
 
 qubo=model.to_qubo()
+
+#we convert from qubo model to the D-wave format
 dwave_qubo = qubo.Q
 
-# solve with D-Wave
+# solve with D-Wave (we use a simulator but it is easy also to use the real hardware)
 res = SimulatedAnnealingSampler().sample_qubo(dwave_qubo, num_reads=10)
 qubo_solution = res.first.sample
 
@@ -143,34 +155,43 @@ for i in model_solution:
         solution.append(list(map(int,Strin)))
             
 
-#Questa parte finale serve per disegnare il grafico del RNA
+#The last part is used to draw the final structure of the system, 
+#i use the Networkx model for be fast, but in the future i would like to make a rapresentation 
+#that take in consideration also the angle of the bond, in the end it does no matter but for
+#visualization purpose can be usefull
 
 
 
-#Graficare il problema 
+#Here we make this part just for the visualization part
+#is my first time using this library and so in the end probabily exist a better way
+#for the creation of the graph.
+
+
 from collections import Counter
-# Funzione per calcolare tutte le tuple (a, b) e (c, d)
+# function for extract the  tuple (a, b) e (c, d)
 def find_repeated_tuples(array):
-    
-
-    # Estrazione delle tuple (ordinate per evitare duplicati come (a, b) e (b, a))
     tuples = []
     for row in array:
         tuples.append(tuple(sorted(row[:2])))  # (a, b)
         tuples.append(tuple(sorted(row[2:])))  # (c, d)
 
-    # Contare la frequenza delle tuple
+    # Tuple frequency
     tuple_counts = Counter(tuples)
 
-    # Raccogliere solo le tuple che si ripetono almeno una volta
+    # take all the couple that are taken more that 2 time
     repeated_tuples = [t for t, count in tuple_counts.items() if count > 1]
 
     return repeated_tuples
 
-# Calcolo delle tuple ripetute
 result = find_repeated_tuples(solution)
 
-#uso il modulo networkx
+#There are some optimization problem (of the program):
+#The result of the solution are 2 times bigger the the one needed
+#because as said before there are ordination problem {(a,b,c,d) is different from (c,d,a,b}
+#there should be a way to rappresent the system that can make use of the symmetry
+#but all my attempt where useless and had make the prediction power weaker
+
+#Networkx module
 
 G=nx.Graph()
 
@@ -187,11 +208,11 @@ for i in RNA:
       
 dictRNA={}        
 for i in range(len(RNA)):
-    #aggiungo i nodi di partenza 
+    #add the node
     G.add_node(i, name=RNA[i])   
-    #aggiungo i colori
+    #add the color
     dictRNA.update({i:RNA[i]}) 
-    #aggiungo i collegamenti banali
+    #i add the linear connection
     if i+1<len(RNA):
         G.add_edge(i,i+1)
 
